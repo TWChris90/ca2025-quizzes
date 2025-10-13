@@ -90,18 +90,35 @@ after_if:
     addi  sp, sp, 4
     jr    ra
 CLZ:
-    li    a1, 32                   # n
-    li    a2, 16                   # c
-1:
-    srl   a3, a0, a2               # y = x >> c
-    beq   a3, x0, 2f
-    sub   a1, a1, a2               # n -= c
-    add   a0, a3, x0               # x  = y
-2:
-    srli  a2, a2, 1                # c >>= 1
-    bne   a2, x0, 1b
-    sub   a0, a1, a0               # return n - x
-    jr    ra
+    li      a1, 0              # count = 0
+    add     a3, a0, x0         # a3 = x (working copy)
+    srli    a2, a3, 16         # y = x >> 16
+    bne     a2, x0, L1  # if y != 0, MSB in top half → keep y
+    addi    a1, a1, 16         # else top 16 are zero
+    j       L2
+L1:
+    add     a3, a2, x0         # a3 = y (keep top half)
+L2:
+    srli    a2, a3, 8          # y = a3 >> 8
+    bne     a2, x0, L3   # if y != 0, MSB in this 8-bit window
+    addi    a1, a1, 8          # else next 8 are zero
+    j       L4
+L3:
+    add     a3, a2, x0         # a3 = y (keep this 8-bit window)
+L4:
+    li      a2, 7              # i = 7 .. 0
+L5:
+    blt     a2, x0, L_done    # i < 0 → done
+    li      t0, 1
+    sll     t0, t0, a2         # mask = 1 << i
+    and     t0, t0, a3         # bit = a3 & mask
+    bne     t0, x0, L_done    # first '1' found → stop
+    addi    a1, a1, 1          # count++
+    addi    a2, a2, -1         # i--
+    j       L5
+L_done:
+    add     a0, a1, x0         # return count
+    jr      ra
 uf8_decode:
     andi  a1, a0, 0x0F             # m
     srli  a2, a0, 4                # e
@@ -117,7 +134,7 @@ uf8_encode:
     sw    ra, 0(sp)                # may call CLZ (software)
     add   a7, a0, x0               # a7 = value
     li    a1, 16
-    blt   a7, a1, UE_RET            # value < 16 ¡÷ return value
+    blt   a7, a1, UE_RET            # value < 16 → return value
     add   a0, a7, x0               # call software CLZ
     jal   ra, CLZ
     li    a1, 31
@@ -139,8 +156,8 @@ uf8_encode:
     li    a2, 1
     sll   a2, a2, a4
     addi  a2, a2, -16              # a2 = next
-    blt   a7, a5, _dec_e           # value < offset0 ¡÷ e = e0 - 1
-    bge   a7, a2, _inc_e           # value >= next   ¡÷ e = e0 + 1
+    blt   a7, a5, _dec_e           # value < offset0 → e = e0 - 1
+    bge   a7, a2, _inc_e           # value >= next   → e = e0 + 1
     j     _e_ok                    # else e = e0
 _dec_e:
     addi  a3, a3, -1
