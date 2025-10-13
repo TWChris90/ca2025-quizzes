@@ -117,7 +117,7 @@ uf8_encode:
     sw    ra, 0(sp)                # may call CLZ (software)
     add   a7, a0, x0               # a7 = value
     li    a1, 16
-    blt   a7, a1, UE_RET            # value < 16 ก๗ return value
+    blt   a7, a1, UE_RET            # value < 16 ยกรท return value
     add   a0, a7, x0               # call software CLZ
     jal   ra, CLZ
     li    a1, 31
@@ -139,8 +139,8 @@ uf8_encode:
     li    a2, 1
     sll   a2, a2, a4
     addi  a2, a2, -16              # a2 = next
-    blt   a7, a5, _dec_e           # value < offset0 ก๗ e = e0 - 1
-    bge   a7, a2, _inc_e           # value >= next   ก๗ e = e0 + 1
+    blt   a7, a5, _dec_e           # value < offset0 ยกรท e = e0 - 1
+    bge   a7, a2, _inc_e           # value >= next   ยกรท e = e0 + 1
     j     _e_ok                    # else e = e0
 _dec_e:
     addi  a3, a3, -1
